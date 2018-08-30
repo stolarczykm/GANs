@@ -1,5 +1,7 @@
 import numpy as np
-from keras.layers import Dense, Conv2D, Deconv2D, Flatten, MaxPool2D, Reshape, Concatenate
+from keras.layers import (
+    Dense, Conv2D, Conv2DTranspose, Flatten, MaxPool2D, Reshape
+)
 from keras.models import Input, Model
 from keras.optimizers import Adam
 
@@ -13,13 +15,13 @@ class GAN:
         self.input_dim = input_dim
         self.noise_dim = noise_dim
         self.discriminator = self._create_discriminator(discriminator_units)
-        self.generator = self._create_generator(generator_units)
-        self.optimizer = Adam(1e-4, decay=1e-6)
         self._compile_models()
-        self.generator.summary()
-        self.discriminator.summary()
+        self.generator = self._create_generator(generator_units)
+        self.discriminator.trainable = False
         self.combined_model = self._create_combined_model()
         self._compile_combined_model()
+        self.generator.summary()
+        self.discriminator.summary()
 
     def train(self, X, epochs, batch_size):
         half_batch_size = int(batch_size / 2)
@@ -38,13 +40,12 @@ class GAN:
                                          axis=0)
                 y_batch = np.concatenate([np.zeros(half_batch_size),
                                           np.ones(half_batch_size)])
-                self.discriminator.trainable = True
                 d_loss = self.discriminator.train_on_batch(x_batch, y_batch)
-                self.discriminator.trainable = False
-                noise = np.random.normal(0, 1, (half_batch_size, self.noise_dim))
+                new_noise = np.random.normal(0, 1, (half_batch_size, self.noise_dim))
+
                 g_loss = self.combined_model.train_on_batch(
-                    noise,
-                    np.ones(half_batch_size))
+                    np.concatenate([noise, new_noise]),
+                    np.ones(batch_size))
                 generator_losses.append(g_loss[0])
                 discriminator_losses.append(d_loss[0])
                 generator_accs.append(g_loss[1])
@@ -61,6 +62,7 @@ class GAN:
         # outputs = Dense(1, activation="sigmoid")(hidden_state)
         hidden_state = Conv2D(hidden_units[0], (3,3), padding="same", activation="relu")(inputs)
         for n_units in hidden_units[1:]:
+            # hidden_state = BatchNormalization()(hidden_state)
             hidden_state = Conv2D(n_units, (3, 3), padding="same", activation="relu")(hidden_state)
             hidden_state = MaxPool2D(2)(hidden_state)
         hidden_state = Flatten()(hidden_state)
@@ -70,18 +72,21 @@ class GAN:
 
     def _create_generator(self, hidden_units):
         inputs = Input(shape=(self.noise_dim,))
-        hidden_state = Dense(hidden_units[0], activation="relu")(inputs)
-        mult = 2**(len(hidden_units) - 1)
-        hidden_state = Reshape((28//mult, 28//mult, 3))(hidden_state)
+        hidden_state = Dense(8*8*hidden_units[0], activation="relu")(inputs)
+
+        hidden_state = Reshape((8, 8, hidden_units[0]))(hidden_state)
         for n_units in hidden_units[1:]:
-            print(hidden_state)
-            hidden_state = Deconv2D(
+            hidden_state = Conv2DTranspose(
                 n_units, (3, 3), strides=2, padding="same", activation="relu"
+            )(hidden_state)
+            # hidden_state = BatchNormalization()(hidden_state)
+            hidden_state = Conv2D(
+                n_units, (3, 3), padding="same", activation="relu"
             )(hidden_state)
             hidden_state = Conv2D(
                 n_units, (3, 3), padding="same", activation="relu"
             )(hidden_state)
-        outputs = Conv2D(1, (3, 3), padding="same")(hidden_state)
+        outputs = Conv2D(1, (5, 5), padding="valid")(hidden_state)
         return Model(inputs, outputs)
 
     def _create_combined_model(self):
@@ -91,14 +96,12 @@ class GAN:
         return Model(noise, outputs)
 
     def _compile_models(self):
-        for model in [self.discriminator, self.generator]:
-            model.compile(loss="binary_crossentropy",
-                          optimizer=self.optimizer,
-                          metrics=["accuracy"])
+        self.discriminator.compile(loss="binary_crossentropy",
+                                   optimizer=Adam(2e-4, beta_1=.5),
+                                   metrics=["accuracy"])
 
     def _compile_combined_model(self):
-        self.discriminator.trainable = False
         self.combined_model.compile(loss="binary_crossentropy",
-                                    optimizer=self.optimizer,
+                                    optimizer=Adam(2e-4, beta_1=.5),
                                     metrics=["accuracy"])
 
