@@ -12,14 +12,30 @@ class GAN:
         self._generator_optimizer = tf.keras.optimizers.Adam(1e-4)
         self._discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
-    def discriminator_loss(self, real_output, fake_output):
+    @property
+    def discriminator(self):
+        return self._discriminator
+
+    @property
+    def generator(self):
+        return self._generator
+
+    def _discriminator_loss(self, real_output, fake_output):
         real_loss = self._cross_entropy(tf.ones_like(real_output), real_output)
         fake_loss = self._cross_entropy(tf.zeros_like(fake_output), fake_output)
         total_loss = real_loss + fake_loss
         return total_loss
 
-    def generator_loss(self, fake_output):
+    def _generator_loss(self, fake_output):
         return self._cross_entropy(tf.ones_like(fake_output), fake_output)
+
+    def _compute_losses(self, X, noise):
+        generated_images = self._generator(noise, training=True)
+        real_output = self._discriminator(X, training=True)
+        fake_output = self._discriminator(generated_images, training=True)
+        gen_loss = self._generator_loss(fake_output)
+        disc_loss = self._discriminator_loss(real_output, fake_output)
+        return disc_loss, gen_loss
 
     @tf.function
     def training_step(self, X):
@@ -28,12 +44,7 @@ class GAN:
         noise = tf.random.normal(noise_shape)
 
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            generated_images = self._generator(noise, training=True)
-            real_output = self._discriminator(X, training=True)
-            fake_output = self._discriminator(generated_images, training=True)
-
-            gen_loss = self.generator_loss(fake_output)
-            disc_loss = self.discriminator_loss(real_output, fake_output)
+            disc_loss, gen_loss = self._compute_losses(X, noise)
 
         generator_gradients = gen_tape.gradient(gen_loss, self._generator.trainable_variables)
         discriminator_gradients = disc_tape.gradient(disc_loss, self._discriminator.trainable_variables)
@@ -90,7 +101,5 @@ class GAN:
 
         self._generator = tf.keras.load_model(generator_path)
         self._discriminator = tf.keras.load_model(discriminator_path)
-
-
 
 
