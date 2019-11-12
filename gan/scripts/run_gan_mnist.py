@@ -63,9 +63,9 @@ if __name__ == '__main__':
     gan = GAN(generator, discriminator)
 
     generated, gen_loss, disc_loss = gan.train(
-        X, epochs=50, batch_size=512, noise=noise, generate_frequency=1, save_dir=model_dir, save_frequency=1)
+        X, epochs=300, batch_size=512, noise=noise, generate_frequency=4, save_dir=model_dir, save_frequency=10)
 
-    animation = ImageAnimation(animation_length=5000)
+    animation = ImageAnimation(animation_length=20000)
     animation.animate(X, generated, gen_loss, disc_loss)
     animation.save(os.path.join(model_dir,  "animation.mp4"))
 
