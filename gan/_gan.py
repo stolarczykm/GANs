@@ -1,6 +1,11 @@
+import logging
 import os
+
 import numpy as np
 import tensorflow as tf
+
+
+logger = logging.getLogger(__name__)
 
 
 class GAN:
@@ -62,7 +67,7 @@ class GAN:
         gen_losses, disc_losses = [], []
 
         for epoch in range(epochs):
-            print(epoch)
+            logger.info("Epoch %d", epoch)
             gen_losses.append(0), disc_losses.append(0)
             for batch in range(n_batches):
                 gen_loss, disc_loss = self.training_step(X[batch * batch_size: (batch + 1) * batch_size])
@@ -71,12 +76,16 @@ class GAN:
             gen_losses[-1] /= n_batches
             disc_losses[-1] /= n_batches
 
+            logger.info("Generator loss %f", gen_losses[-1])
+            logger.info("Discriminator loss %f", disc_losses[-1])
+
             if noise is not None and epoch % generate_frequency == 0:
                 generated.append(self.generate(noise))
 
             if save_frequency is not None and epoch % save_frequency == save_frequency - 1:
                 save_dir_epoch = os.path.join(save_dir, str(epoch))
                 os.makedirs(save_dir_epoch, exist_ok=True)
+                logger.info("Saving gan to %s", save_dir_epoch)
                 self.save(save_dir_epoch)
 
         return np.array(generated), np.array(gen_losses), np.array(disc_losses)

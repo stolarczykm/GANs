@@ -1,4 +1,4 @@
-docker rm gan
+docker rm gan > /dev/null
 
 docker run -it \
     --gpus all \

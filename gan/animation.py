@@ -152,7 +152,7 @@ class ImageAnimation(Animation):
     @classmethod
     def _show_images(cls, ax, generated_data):
         ax.axis('off')
-        im = ax.imshow(cls._images_to_grid(generated_data[0]))
+        im = ax.imshow(cls._images_to_grid(generated_data[0]), cmap="gray")
         return im
 
     @staticmethod
