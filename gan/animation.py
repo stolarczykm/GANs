@@ -16,7 +16,7 @@ class Animation(abc.ABC):
         self._animation_length = animation_length
 
     @abc.abstractmethod
-    def animate(self, real_data, generated_data, generator_loss, discriminator_loss):
+    def animate(self, real_data, generated_data, generator_loss, discriminator_loss, **kwargs):
         pass
 
     def save(self, path):
@@ -25,16 +25,18 @@ class Animation(abc.ABC):
 
 
 class ScatterAnimation(Animation):
-    def animate(self, real_data, generated_data, generator_loss, discriminator_loss):
+    def animate(self, real_data, generated_data, generator_loss, discriminator_loss, **kwargs):
         assert len(real_data.shape) == 2
         assert real_data.shape[1] == 2
 
         assert len(generated_data.shape) == 3
         assert generated_data.shape[2] == 2
 
+        real_data_colors = kwargs.get("real_data_colors")
+
         ax, ax2, ax3, self._figure = self._create_axes()
         self._set_fig_size(self._figure)
-        sc, txt = self._plot_real_data(ax, real_data)
+        sc, txt = self._plot_real_data(ax, real_data, real_data_colors)
         line_gen = self._plot_generator_loss(ax2, generator_loss)
         line_disc = self._plot_discriminator_loss(ax2, ax3, discriminator_loss)
 
@@ -79,14 +81,16 @@ class ScatterAnimation(Animation):
         return line_gen
 
     @staticmethod
-    def _plot_real_data(ax, real_data):
+    def _plot_real_data(ax, real_data, real_data_colors=None):
         ax.axis('off')
-        ax.scatter(real_data[:, 0], real_data[:, 1], label="real")
+        if real_data_colors is not None:
+            ax.scatter(real_data[:, 0], real_data[:, 1], label="real", c=real_data_colors)
+        else:
+            ax.scatter(real_data[:, 0], real_data[:, 1], label="real")
         ax.set_xlim([-1.4, 1.4])
         ax.set_ylim([-1.4, 1.4])
         txt = ax.text(-1.2, 1.2, "")
         sc = ax.scatter([], [], label="generated")
-        ax.legend()
         return sc, txt
 
     @staticmethod
@@ -97,7 +101,7 @@ class ScatterAnimation(Animation):
 
 
 class ImageAnimation(Animation):
-    def animate(self, real_data, generated_data, generator_loss, discriminator_loss):
+    def animate(self, real_data, generated_data, generator_loss, discriminator_loss, **kwargs):
         assert len(generated_data.shape) == 5
 
         ax, ax2, ax3, self._figure = self._create_axes()

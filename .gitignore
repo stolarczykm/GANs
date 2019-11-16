@@ -5,3 +5,4 @@ venv/
 .ipynb_checkpoints
 *.py[cod]
 *.swp
+gan.egg-info

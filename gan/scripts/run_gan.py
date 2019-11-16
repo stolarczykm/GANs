@@ -1,7 +1,10 @@
+import datetime
+import os
+
 import numpy as np
 from tensorflow.keras import models, layers
 
-from gan import GAN, get_gan_package_root_direcotry
+from gan import GAN, get_gan_package_root_direcotry, get_models_directory
 from gan.animation import ScatterAnimation
 
 NOISE_DIM = 16
@@ -38,6 +41,10 @@ def create_dataset(n):
 
 
 def _main():
+    run_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    model_dir = os.path.join(get_models_directory(), run_name)
+    os.makedirs(model_dir, exist_ok=False)
+
     X = create_dataset(2048)
     noise = np.random.normal(0, 1, (1024, NOISE_DIM))
     generator = make_generator()
@@ -46,7 +53,7 @@ def _main():
     generated, gen_loss, disc_loss = gan.train(X, epochs=5000, batch_size=512, noise=noise, generate_frequency=10)
     animation = ScatterAnimation(animation_length=30000)
     animation.animate(X, generated, gen_loss, disc_loss)
-    animation.save("movie2.mp4")
+    animation.save(os.path.join(model_dir, "animation.mp4"))
 
 
 if __name__ == '__main__':
