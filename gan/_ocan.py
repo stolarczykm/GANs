@@ -78,8 +78,12 @@ class OCAN(GAN):
         )
 
     def _generator_losses(self, fake_output, real_output, pretrained_output, pretrained_hidden_state):
+        # TODO: compute pull_away_loss on hidden state of current discriminator, not pretrained
         pull_away_loss = self.pull_away_loss(pretrained_hidden_state)
+
         ent_loss = self.ent_loss(pretrained_output)
+
+        # TODO: compute feature_matching loss on some intermediate layer of discriminator
         feature_matching_loss = self.feature_matching_loss(real_output, fake_output)
 
         return pull_away_loss + ent_loss + feature_matching_loss
