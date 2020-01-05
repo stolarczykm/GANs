@@ -7,7 +7,7 @@ import click
 import numpy as np
 from tensorflow.keras import models, layers
 
-from gan import GAN, get_models_directory, get_data_directory
+from gan import GAN, get_models_directory, get_data_directory, WGAN
 from gan.animation import ImageAnimation
 
 NOISE_DIM = 128
@@ -55,22 +55,34 @@ def create_dataset(path: Optional[str] = None):
 @click.command()
 @click.option("-e", "--epochs", default=300, type=click.INT, help="Number of epochs")
 @click.option("-b", "--batch-size", default=512, type=click.INT, help="Batch size")
-@click.option("-a", "--animation-length", default=20, type=click.INT, help="Animation length (in seconds)")
-def run(epochs, batch_size, animation_length):
+@click.option("-al", "--animation-length", default=20, type=click.INT, help="Animation length (in seconds)")
+@click.option("-af", "--animation-frequency", default=1, type=click.INT, help="Epochs per animation frame")
+@click.option("--gan", "model", flag_value="gan", default=True, help="Generative Adversarial Networks")
+@click.option("--wgan", "model", flag_value="wgan", help="Wasserstein Generative Adversarial Networks")
+@click.option(
+    "--gradient-penalty", "-gp", default=10.0, type=click.FLOAT, help="Gradient penalty strength for WGAN"
+)
+def run(epochs, batch_size, animation_length, animation_frequency, model, gradient_penalty):
     logging.basicConfig(format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                         datefmt='%Y-%m-%d:%H:%M:%S',
                         level=logging.INFO)
 
-    run_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    run_name = f"{model}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     model_dir = os.path.join(get_models_directory(), run_name)
     os.makedirs(model_dir, exist_ok=False)
     X = create_dataset()
     noise = np.random.normal(0, 1, (100, NOISE_DIM))
     generator = make_generator()
     discriminator = make_discriminator()
-    gan = GAN(generator, discriminator)
+    if model == "gan":
+        gan = GAN(generator, discriminator)
+    elif model == "wgan":
+        gan = WGAN(generator, discriminator, gradient_penalty_strength=gradient_penalty)
+    else:
+        raise ValueError("model should be one of {gan, wgan}")
+
     generated, gen_loss, disc_loss = gan.train(
-        X, epochs=epochs, batch_size=batch_size, noise=noise, generate_frequency=4,
+        X, epochs=epochs, batch_size=batch_size, noise=noise, generate_frequency=animation_frequency,
         save_dir=model_dir, save_frequency=10
     )
 
@@ -81,8 +93,3 @@ def run(epochs, batch_size, animation_length):
 
 if __name__ == '__main__':
     run()
-
-
-
-
-

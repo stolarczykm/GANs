@@ -1,6 +1,7 @@
 import os
 from gan._gan import GAN
 from gan._ocan import OCAN
+from gan._wgan import WGAN
 
 
 def get_gan_package_root_direcotry():
